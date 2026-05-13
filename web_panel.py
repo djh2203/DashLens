@@ -12,7 +12,7 @@ import termios
 import struct
 from datetime import datetime
 from typing import Dict, Optional, Any
-from flask import Flask, render_template_string, jsonify, request
+from flask import Flask, render_template_string, jsonify, request, send_file
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import psutil
 
@@ -728,7 +728,14 @@ def get_system_stats() -> Dict:
     cpu_percent = psutil.cpu_percent(interval=1)
     memory = psutil.virtual_memory()
     disk = psutil.disk_usage('/')
-    network = psutil.net_io_counters()
+    
+    try:
+        network = psutil.net_io_counters()
+        network_sent = network.bytes_sent
+        network_recv = network.bytes_recv
+    except PermissionError:
+        network_sent = 0
+        network_recv = 0
     
     uptime = time.time() - psutil.boot_time()
     uptime_hours = int(uptime // 3600)
@@ -755,8 +762,8 @@ def get_system_stats() -> Dict:
         'cpu': cpu_percent,
         'memory': memory.percent,
         'disk': disk.percent,
-        'network_sent': network.bytes_sent,
-        'network_recv': network.bytes_recv,
+        'network_sent': network_sent,
+        'network_recv': network_recv,
         'os': os_info,
         'uptime': f'{uptime_hours}h {uptime_minutes}m',
         'ip': local_ip,
@@ -816,9 +823,17 @@ def handle_resize(data):
         )
 
 
+@app.route('/style.css')
+def style_css():
+    return send_file('style.css')
+
+@app.route('/script.js')
+def script_js():
+    return send_file('script.js')
+
 @app.route('/')
 def index():
-    return render_template_string(HTML_TEMPLATE)
+    return send_file('index.html')
 
 
 @app.route('/api/stats')
