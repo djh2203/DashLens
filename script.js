@@ -84,9 +84,11 @@ function updateSystemInfo(data) {
     }
 
     if (data.disk_used !== undefined && data.disk_total !== undefined) {
-        const diskPercent = data.disk_total > 0
-            ? Math.round((data.disk_used / data.disk_total) * 100)
-            : 0;
+        const diskPercent = data.disk_percent !== undefined
+            ? Math.round(data.disk_percent)
+            : (data.disk_total > 0
+                ? Math.round((data.disk_used / data.disk_total) * 100)
+                : 0);
         document.getElementById('disk-value').textContent = diskPercent;
         document.getElementById('disk-detail').textContent =
             formatBytes(data.disk_used) + ' / ' + formatBytes(data.disk_total);

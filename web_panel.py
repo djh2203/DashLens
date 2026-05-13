@@ -10,6 +10,7 @@ import select
 import fcntl
 import termios
 import struct
+import re
 from datetime import datetime
 from typing import Dict, Optional, Any
 from flask import Flask, render_template_string, jsonify, request, send_file
@@ -780,6 +781,15 @@ def get_fastfetch_info() -> Dict:
         pass
     return info
 
+def parse_disk_from_fastfetch(disk_used: int, disk_total: int, fastfetch_info: Dict) -> float:
+    disk_percent = round((disk_used / disk_total) * 100, 1) if disk_total > 0 else 0.0
+    if 'disk' in fastfetch_info:
+        disk_str = str(fastfetch_info['disk'])
+        match = re.search(r'\((\d+)%\)', disk_str)
+        if match:
+            disk_percent = float(match.group(1))
+    return disk_percent
+
 def get_hostname() -> str:
     try:
         with open('/etc/hostname', 'r') as f:
@@ -863,6 +873,8 @@ def get_system_stats() -> Dict:
     if 'cpu' in fastfetch_info and fastfetch_info['cpu']:
         cpu_name = fastfetch_info['cpu']
     
+    disk_percent = parse_disk_from_fastfetch(disk.used, disk.total, fastfetch_info)
+    
     return {
         'cpu': cpu_percent,
         'memory': memory.percent,
@@ -878,6 +890,7 @@ def get_system_stats() -> Dict:
         'memory_total': memory.total,
         'disk_used': disk.used,
         'disk_total': disk.total,
+        'disk_percent': disk_percent,
         'internal_ip': local_ip,
         'cpu_temp': cpu_temp,
         'cpu_name': cpu_name,
