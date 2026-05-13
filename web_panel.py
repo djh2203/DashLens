@@ -766,19 +766,49 @@ def get_fastfetch_info() -> Dict:
                 data = json.loads(result.stdout)
                 if isinstance(data, dict):
                     for key, value in data.items():
-                        info[key] = value
+                        info[key.lower()] = value
                 elif isinstance(data, list):
                     for item in data:
-                        if isinstance(item, dict) and 'type' in item and 'value' in item:
-                            info[item['type']] = item['value']
+                        if isinstance(item, dict):
+                            if 'type' in item and 'value' in item:
+                                info[item['type'].lower()] = item['value']
+                            elif 'key' in item and 'value' in item:
+                                info[item['key'].lower()] = item['value']
             except (json.JSONDecodeError, KeyError, TypeError):
                 pass
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     return info
 
+def get_hostname() -> str:
+    try:
+        with open('/etc/hostname', 'r') as f:
+            return f.read().strip()
+    except Exception:
+        return 'Unknown'
+
+def get_gpu_info() -> str:
+    try:
+        result = subprocess.run(['lspci', '-nnk'], capture_output=True, text=True)
+        if result.returncode == 0:
+            for line in result.stdout.split('\n'):
+                if 'VGA' in line or '3D controller' in line:
+                    parts = line.split(':')
+                    if len(parts) >= 3:
+                        return parts[2].strip()
+        return 'Unknown'
+    except FileNotFoundError:
+        try:
+            with open('/proc/cpuinfo', 'r') as f:
+                for line in f:
+                    if 'Hardware' in line:
+                        return line.split(':')[1].strip()
+        except Exception:
+            pass
+        return 'Unknown'
+
 def get_system_stats() -> Dict:
-    cpu_percent = psutil.cpu_percent(interval=1)
+    cpu_percent = psutil.cpu_percent(interval=0.1)
     memory = psutil.virtual_memory()
     disk = psutil.disk_usage('/')
     
@@ -796,7 +826,8 @@ def get_system_stats() -> Dict:
     
     os_info = 'Unknown'
     if os.path.exists('/etc/alpine-release'):
-        os_info = 'Alpine Linux'
+        with open('/etc/alpine-release', 'r') as f:
+            os_info = f'Alpine Linux {f.read().strip()}'
     elif os.path.exists('/etc/debian_version'):
         os_info = 'Debian'
     elif os.path.exists('/etc/lsb-release'):
@@ -814,10 +845,23 @@ def get_system_stats() -> Dict:
     cpu_temp = get_cpu_temperature()
     cpu_name = get_cpu_info()
     kernel = get_kernel_version()
+    hostname = get_hostname()
+    gpu_info = get_gpu_info()
     
     swap = psutil.swap_memory()
     
     fastfetch_info = get_fastfetch_info()
+    
+    if 'os' in fastfetch_info and fastfetch_info['os']:
+        os_info = fastfetch_info['os']
+    if 'kernel' in fastfetch_info and fastfetch_info['kernel']:
+        kernel = fastfetch_info['kernel']
+    if 'host' in fastfetch_info and fastfetch_info['host']:
+        hostname = fastfetch_info['host']
+    if 'gpu' in fastfetch_info and fastfetch_info['gpu']:
+        gpu_info = fastfetch_info['gpu']
+    if 'cpu' in fastfetch_info and fastfetch_info['cpu']:
+        cpu_name = fastfetch_info['cpu']
     
     return {
         'cpu': cpu_percent,
@@ -841,7 +885,8 @@ def get_system_stats() -> Dict:
         'swap_used': swap.used,
         'swap_total': swap.total,
         'swap_percent': swap.percent,
-        **fastfetch_info
+        'hostname': hostname,
+        'gpu': gpu_info
     }
 
 

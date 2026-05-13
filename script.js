@@ -56,24 +56,20 @@ function updateGauge(elementId, value, gradientId) {
 
     if (gradientId === 'cpu-gradient') {
         gauge.style.stroke = 'url(#cpu-gradient)';
-    } else if (gradientId === 'ram') {
+    } else if (gradientId === 'ram-gradient') {
         gauge.style.stroke = 'url(#ram-gradient)';
+    } else if (gradientId === 'disk-gradient') {
+        gauge.style.stroke = 'url(#disk-gradient)';
     } else if (gradientId === 'swap-gradient') {
         gauge.style.stroke = 'url(#swap-gradient)';
     }
 }
 
 function updateSystemInfo(data) {
-    if (data.cpu_temp !== undefined && data.cpu_temp > 0) {
-        const cpuValue = Math.round(data.cpu_temp);
-        document.getElementById('cpu-value').textContent = cpuValue;
-        document.getElementById('cpu-detail').textContent = data.cpu_temp.toFixed(1) + '°C';
-        const tempPercent = Math.min(data.cpu_temp / 100 * 100, 100);
-        updateGauge('cpu-progress', tempPercent, 'cpu-gradient');
-    } else if (data.cpu_usage !== undefined) {
+    if (data.cpu_usage !== undefined) {
         const cpuValue = Math.round(data.cpu_usage);
         document.getElementById('cpu-value').textContent = cpuValue;
-        document.getElementById('cpu-detail').textContent = data.cpu_usage + '%';
+        document.getElementById('cpu-detail').textContent = data.cpu_usage.toFixed(1) + '%';
         updateGauge('cpu-progress', data.cpu_usage, 'cpu-gradient');
     }
 
@@ -84,10 +80,17 @@ function updateSystemInfo(data) {
         document.getElementById('ram-value').textContent = memPercent;
         document.getElementById('ram-detail').textContent =
             formatBytes(data.memory_used) + ' / ' + formatBytes(data.memory_total);
-        updateGauge('ram-progress', memPercent, 'ram');
+        updateGauge('ram-progress', memPercent, 'ram-gradient');
     }
 
     if (data.disk_used !== undefined && data.disk_total !== undefined) {
+        const diskPercent = data.disk_total > 0
+            ? Math.round((data.disk_used / data.disk_total) * 100)
+            : 0;
+        document.getElementById('disk-value').textContent = diskPercent;
+        document.getElementById('disk-detail').textContent =
+            formatBytes(data.disk_used) + ' / ' + formatBytes(data.disk_total);
+        updateGauge('disk-progress', diskPercent, 'disk-gradient');
         updateStorageBars(data);
     }
 
@@ -114,6 +117,16 @@ function updateSystemInfo(data) {
     if (data.os !== undefined) {
         const osEl = document.getElementById('os-info');
         if (osEl) osEl.textContent = data.os;
+    }
+
+    if (data.hostname !== undefined) {
+        const hostnameEl = document.getElementById('hostname');
+        if (hostnameEl) hostnameEl.textContent = data.hostname;
+    }
+
+    if (data.gpu !== undefined) {
+        const gpuEl = document.getElementById('gpu');
+        if (gpuEl) gpuEl.textContent = data.gpu;
     }
 
     if (data.swap_used !== undefined && data.swap_total !== undefined) {
