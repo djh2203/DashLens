@@ -767,7 +767,13 @@ def get_system_stats() -> Dict:
         'os': os_info,
         'uptime': f'{uptime_hours}h {uptime_minutes}m',
         'ip': local_ip,
-        'desktop_running': desktop_running
+        'desktop_running': desktop_running,
+        'cpu_usage': cpu_percent,
+        'memory_used': memory.used,
+        'memory_total': memory.total,
+        'disk_used': disk.used,
+        'disk_total': disk.total,
+        'internal_ip': local_ip
     }
 
 
@@ -838,6 +844,11 @@ def index():
 
 @app.route('/api/stats')
 def stats():
+    return jsonify(get_system_stats())
+
+
+@app.route('/api/status')
+def status():
     return jsonify(get_system_stats())
 
 

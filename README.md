@@ -1,8 +1,5 @@
 # DashLens - Python 实现的桌面管理器
 
-## 📋 概述
-
-这是用 Python 重写的桌面启动脚本，完全替代原来的 shell 脚本，具有更好的跨平台兼容性和错误处理能力。
 
 ## 🎯 主要特性
 
@@ -19,6 +16,9 @@
 - `desktop_manager.py` - 核心桌面管理器（替代 start-desktop.sh）
 - `web_panel.py` - Web 控制面板（替代 panel-server.py）
 - `dashlens.py` - 统一入口脚本
+- `index.html` - Web 面板前端页面
+- `script.js` - Web 面板前端脚本
+- `style.css` - Web 面板样式文件
 - `config.json` - 配置文件
 - `requirements.txt` - Python 依赖
 
@@ -102,11 +102,12 @@ python3 dashlens.py
 
 ## 📊 Web 面板功能
 
-- **实时监控**：CPU、内存、磁盘、网络使用率
+- **实时监控**：CPU、内存、磁盘使用率仪表显示
 - **桌面控制**：一键启动/停止桌面
-- **Web 终端**：点击"终端"按钮打开命令行，支持所有命令操作
+- **存储空间**：可视化磁盘使用进度条
 - **系统信息**：操作系统、运行时间、IP 地址
-- **自动更新**：每 2 秒刷新数据
+- **自动更新**：每 3 秒自动刷新数据
+- **动态背景**：交互式 ASCII 网格背景效果
 
 ## 💻 Web 终端使用说明
 
@@ -139,23 +140,18 @@ Web 终端提供完整的命令行体验，无需 SSH 或密码：
 ### 1. ImportError: No module named 'psutil'
 
 ```bash
-pip install psutil
+pip install -r requirements.txt
 ```
 
-### 2. ImportError: No module named 'flask'
 
-```bash
-pip install flask
-```
-
-### 3. 权限错误
+### 2. 权限错误
 
 确保脚本有执行权限：
 ```bash
 chmod +x dashlens.py
 ```
 
-### 4. 端口被占用
+### 3. 端口被占用
 
 修改 `config.json` 中的端口配置
 
@@ -164,25 +160,7 @@ chmod +x dashlens.py
 ```bash
 tail -f ~/desktop.log
 ```
-
-## 🔄 从 Shell 脚本迁移
-
-1. 备份原脚本：
-   ```bash
-   mv start-desktop.sh start-desktop.sh.bak
-   ```
-
-2. 安装 Python 依赖：
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. 测试新脚本：
-   ```bash
-   python3 dashlens.py
-   ```
-
-4. 确认无误后，可以删除原脚本
+无误后，可以删除原脚本
 
 ## 💡 优化建议
 
