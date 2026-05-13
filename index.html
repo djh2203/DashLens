@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统仪表盘</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <div id="app" class="is-flex is-flex-direction-column is-dark-bg">
+        <div id="bg" style="width: 100%; height: 100vh;"></div>
+        <div class="base-bar">
+            <div class="brand-bar">
+                <figure class="image _is-136x26 mb-3">
+                    <!-- <img alt="logo" srcset="/img/logo.8d48186f.svg 2x"> -->
+                     仪表盘
+                </figure>
+            </div>
+        </div>
+
+        <div class="dashboard container">
+            <div class="top-row">
+                <div class="datetime-box">
+                    <div class="datetime-date" id="current-date">--</div>
+                    <div class="datetime-time" id="current-time">--:--:--</div>
+                </div>
+
+                <div class="gauges-row">
+                    <div class="gauge-box">
+                        <div class="gauge-container">
+                            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="gauge-svg">
+                                <defs>
+                                    <linearGradient id="cpu-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color: #ffd580;"></stop>
+                                        <stop offset="100%" style="stop-color: #33ffaa;"></stop>
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="50" cy="50" r="42" class="gauge-bg"></circle>
+                                <circle cx="50" cy="50" r="42" class="gauge-progress" id="cpu-progress"></circle>
+                            </svg>
+                            <div class="gauge-overlay">
+                                <span class="gauge-value" id="cpu-value">0</span>
+                                <span class="gauge-label">CPU</span>
+                            </div>
+                        </div>
+                        <div class="gauge-detail" id="cpu-detail">0%</div>
+                    </div>
+
+                    <div class="gauge-box">
+                        <div class="gauge-container">
+                            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="gauge-svg">
+                                <defs>
+                                    <linearGradient id="ram-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color: #ffd580;"></stop>
+                                        <stop offset="100%" style="stop-color: #33ffaa;"></stop>
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="50" cy="50" r="42" class="gauge-bg"></circle>
+                                <circle cx="50" cy="50" r="42" class="gauge-progress" id="ram-progress"></circle>
+                            </svg>
+                            <div class="gauge-overlay">
+                                <span class="gauge-value" id="ram-value">0</span>
+                                <span class="gauge-label">RAM</span>
+                            </div>
+                        </div>
+                        <div class="gauge-detail" id="ram-detail">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-sections">
+                <div class="column is-full">
+                    <div class="storage-section">
+                        <h2 class="section-title">存储空间</h2>
+                        <div class="storage-bars" id="storage-bars">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column is-full">
+                    <div class="desktop-status-section">
+                        <h2 class="section-title">桌面状态</h2>
+                        <div class="status-card">
+                            <div class="status-indicator">
+                                <div class="indicator-circle" id="desktop-status"></div>
+                                <span id="desktop-status-text">未运行</span>
+                            </div>
+                            <div class="status-info">
+                                <div class="status-item">
+                                    <span class="status-label">运行时长</span>
+                                    <span class="status-value" id="desktop-uptime">--</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">VNC 链接</span>
+                                    <a href="#" id="vnc-link" class="vnc-link" target="_blank">点击访问</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="start-desktop" class="btn btn-start" disabled>
+                                <span class="btn-icon">▶</span>
+                                启动桌面
+                            </button>
+                            <button id="stop-desktop" class="btn btn-stop" disabled>
+                                <span class="btn-icon">■</span>
+                                关闭桌面
+                            </button>
+                            <button id="refresh-btn" class="btn btn-refresh">
+                                <span class="btn-icon">↻</span>
+                                刷新状态
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column is-full has-text-centered">
+                    <div class="system-info-footer">
+                        <div class="info-item">
+                            <span class="info-label">内网 IP</span>
+                            <span class="info-value" id="internal-ip">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">系统运行时间</span>
+                            <span class="info-value" id="uptime">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">最后更新</span>
+                            <span class="info-value" id="refresh-time">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+    <script type="module">
+        import { AsciiGrid } from 'https://unpkg.com/recoat/dist/index.mjs';
+
+        AsciiGrid({
+            container: '#bg',
+            mouseIntensity: 1,
+        }).start();
+    </script>
+</body>
+</html>
