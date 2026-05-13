@@ -6,18 +6,111 @@ import time
 import threading
 import socket
 import subprocess
+import select
+import fcntl
+import termios
+import struct
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from flask import Flask, render_template_string, jsonify, request
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import psutil
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from desktop_manager import DesktopManager
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'dashlens_secret_key'
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
+
 desktop_manager: Optional[DesktopManager] = None
 desktop_thread: Optional[threading.Thread] = None
 desktop_running = False
+
+class TerminalSession:
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        self.process = None
+        self.thread = None
+        self.running = False
+        self.pid = None
+    
+    def start(self):
+        try:
+            self.process = subprocess.Popen(
+                ['/bin/sh', '-i'],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                preexec_fn=os.setsid,
+                universal_newlines=False,
+                bufsize=0
+            )
+            self.pid = self.process.pid
+            self.running = True
+            
+            self.thread = threading.Thread(target=self._read_output, daemon=True)
+            self.thread.start()
+            
+            socketio.emit('terminal_start', {'session_id': self.session_id}, room=self.session_id)
+            return True
+        except Exception as e:
+            print(f'启动终端失败: {e}')
+            return False
+    
+    def _read_output(self):
+        while self.running and self.process:
+            try:
+                ready, _, _ = select.select([self.process.stdout], [], [], 0.1)
+                if ready:
+                    output = self.process.stdout.read(4096).decode('utf-8', errors='replace')
+                    if output:
+                        socketio.emit('terminal_output', {
+                            'session_id': self.session_id,
+                            'output': output
+                        }, room=self.session_id)
+                
+                if self.process.poll() is not None:
+                    break
+            except Exception as e:
+                print(f'读取终端输出失败: {e}')
+                break
+        
+        self.running = False
+    
+    def send_command(self, command: str):
+        if self.process and self.running:
+            try:
+                self.process.stdin.write(command.encode('utf-8'))
+                self.process.stdin.flush()
+                return True
+            except Exception as e:
+                print(f'发送命令失败: {e}')
+                return False
+        return False
+    
+    def resize(self, rows: int, cols: int):
+        if self.process and self.running:
+            try:
+                winsize = struct.pack('HHHH', rows, cols, 0, 0)
+                fcntl.ioctl(self.process.stdout.fileno(), termios.TIOCSWINSZ, winsize)
+                return True
+            except Exception as e:
+                print(f'调整窗口大小失败: {e}')
+                return False
+        return False
+    
+    def stop(self):
+        self.running = False
+        if self.process:
+            try:
+                os.killpg(os.getpgid(self.process.pid), 9)
+            except Exception as e:
+                print(f'终止进程失败: {e}')
+            self.process = None
+
+terminal_sessions: Dict[str, TerminalSession] = {}
+
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -26,6 +119,10 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DashLens - 服务器面板</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -42,7 +139,7 @@ HTML_TEMPLATE = """
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         
@@ -178,6 +275,16 @@ HTML_TEMPLATE = """
             transform: none;
         }
         
+        .btn-terminal {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-terminal:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
+        }
+        
         .status-indicator {
             display: inline-block;
             width: 12px;
@@ -201,6 +308,7 @@ HTML_TEMPLATE = """
             border-radius: 15px;
             padding: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
         }
         
         .info-panel h2 {
@@ -246,6 +354,44 @@ HTML_TEMPLATE = """
             text-decoration: underline;
         }
         
+        .terminal-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .terminal-header h2 {
+            color: #333;
+        }
+        
+        .terminal-container {
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #333;
+        }
+        
+        #terminal {
+            height: 400px;
+            font-size: 14px;
+        }
+        
+        .terminal-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.8em;
@@ -257,6 +403,10 @@ HTML_TEMPLATE = """
             
             .button-group {
                 flex-direction: column;
+            }
+            
+            #terminal {
+                height: 300px;
             }
         }
     </style>
@@ -309,9 +459,25 @@ HTML_TEMPLATE = """
                 <button class="btn btn-stop" id="stop-btn" onclick="stopDesktop()" disabled>
                     停止桌面
                 </button>
+                <button class="btn btn-terminal" id="terminal-btn" onclick="toggleTerminal()">
+                    🖥️ 终端
+                </button>
             </div>
             <div class="desktop-link" id="desktop-link" style="display: none;">
                 <a id="desktop-url" href="#" target="_blank">🚀 打开桌面</a>
+            </div>
+        </div>
+        
+        <div class="terminal-panel" id="terminal-panel" style="display: none;">
+            <div class="terminal-header">
+                <h2>💻 Web 终端</h2>
+                <div class="terminal-status">
+                    <span class="status-indicator status-offline" id="terminal-status"></span>
+                    <span id="terminal-status-text">未连接</span>
+                </div>
+            </div>
+            <div class="terminal-container">
+                <div id="terminal"></div>
             </div>
         </div>
         
@@ -338,6 +504,132 @@ HTML_TEMPLATE = """
     
     <script>
         let lastNetworkStats = null;
+        let term = null;
+        let socket = null;
+        let terminalConnected = false;
+        
+        function initTerminal() {
+            if (term) return;
+            
+            term = new Terminal({
+                cursorBlink: true,
+                fontSize: 14,
+                fontFamily: 'Monaco, "Courier New", monospace',
+                theme: {
+                    background: '#1e1e1e',
+                    foreground: '#d4d4d4',
+                    cursor: '#aeafad',
+                    selection: '#264f78',
+                    black: '#0d0d0d',
+                    red: '#f14c4c',
+                    green: '#6a9955',
+                    yellow: '#dcdcaa',
+                    blue: '#569cd6',
+                    magenta: '#c586c0',
+                    cyan: '#4ec9b0',
+                    white: '#d4d4d4',
+                    brightBlack: '#666666',
+                    brightRed: '#f14c4c',
+                    brightGreen: '#6a9955',
+                    brightYellow: '#dcdcaa',
+                    brightBlue: '#569cd6',
+                    brightMagenta: '#c586c0',
+                    brightCyan: '#4ec9b0',
+                    brightWhite: '#ffffff'
+                }
+            });
+            
+            const fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+            
+            window.addEventListener('resize', () => {
+                fitAddon.fit();
+                resizeTerminal();
+            });
+            
+            term.onData((data) => {
+                if (socket && terminalConnected) {
+                    socket.emit('command', { data: data });
+                }
+            });
+            
+            connectSocket();
+        }
+        
+        function connectSocket() {
+            if (socket) {
+                socket.disconnect();
+            }
+            
+            socket = io();
+            
+            socket.on('connect', () => {
+                terminalConnected = true;
+                updateTerminalStatus(true);
+                socket.emit('start_terminal');
+            });
+            
+            socket.on('disconnect', () => {
+                terminalConnected = false;
+                updateTerminalStatus(false);
+            });
+            
+            socket.on('terminal_output', (data) => {
+                if (term) {
+                    term.write(data.output);
+                }
+            });
+            
+            socket.on('terminal_start', () => {
+                if (term) {
+                    term.write('欢迎使用 DashLens Web 终端!\r\n');
+                }
+            });
+        }
+        
+        function resizeTerminal() {
+            if (term && terminalConnected) {
+                const size = term.proposeGeometry();
+                if (size && socket) {
+                    socket.emit('resize', { rows: size.rows, cols: size.cols });
+                }
+            }
+        }
+        
+        function updateTerminalStatus(connected) {
+            const statusDot = document.getElementById('terminal-status');
+            const statusText = document.getElementById('terminal-status-text');
+            
+            if (connected) {
+                statusDot.className = 'status-indicator status-online';
+                statusText.textContent = '已连接';
+            } else {
+                statusDot.className = 'status-indicator status-offline';
+                statusText.textContent = '未连接';
+            }
+        }
+        
+        function toggleTerminal() {
+            const panel = document.getElementById('terminal-panel');
+            const btn = document.getElementById('terminal-btn');
+            
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                btn.textContent = '✕ 关闭终端';
+                setTimeout(() => {
+                    initTerminal();
+                }, 100);
+            } else {
+                panel.style.display = 'none';
+                btn.textContent = '🖥️ 终端';
+                if (socket) {
+                    socket.disconnect();
+                    socket = null;
+                }
+            }
+        }
         
         function updateStats() {
             fetch('/api/stats')
@@ -484,6 +776,46 @@ def run_desktop():
         desktop_running = False
 
 
+@socketio.on('connect')
+def handle_connect():
+    print(f'客户端连接: {request.sid}')
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    session_id = request.sid
+    if session_id in terminal_sessions:
+        terminal_sessions[session_id].stop()
+        del terminal_sessions[session_id]
+    print(f'客户端断开: {session_id}')
+
+
+@socketio.on('start_terminal')
+def handle_start_terminal():
+    session_id = request.sid
+    if session_id not in terminal_sessions:
+        terminal_sessions[session_id] = TerminalSession(session_id)
+        terminal_sessions[session_id].start()
+        join_room(session_id)
+
+
+@socketio.on('command')
+def handle_command(data):
+    session_id = request.sid
+    if session_id in terminal_sessions:
+        terminal_sessions[session_id].send_command(data.get('data', ''))
+
+
+@socketio.on('resize')
+def handle_resize(data):
+    session_id = request.sid
+    if session_id in terminal_sessions:
+        terminal_sessions[session_id].resize(
+            data.get('rows', 24),
+            data.get('cols', 80)
+        )
+
+
 @app.route('/')
 def index():
     return render_template_string(HTML_TEMPLATE)
@@ -532,7 +864,7 @@ def main():
     print(f'  访问地址: http://{get_system_stats()["ip"]}:{port}')
     print('=' * 50)
     
-    app.run(host=host, port=port, debug=False)
+    socketio.run(app, host=host, port=port, debug=False)
 
 
 if __name__ == '__main__':
