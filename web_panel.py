@@ -760,15 +760,20 @@ def get_kernel_version() -> str:
 def get_fastfetch_info() -> Dict:
     info = {}
     try:
-        result = subprocess.run(['fastfetch', '--json'], capture_output=True, text=True)
+        result = subprocess.run(['fastfetch', '--json'], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             try:
                 data = json.loads(result.stdout)
-                for item in data:
-                    info[item['type']] = item['value']
-            except json.JSONDecodeError:
+                if isinstance(data, dict):
+                    for key, value in data.items():
+                        info[key] = value
+                elif isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict) and 'type' in item and 'value' in item:
+                            info[item['type']] = item['value']
+            except (json.JSONDecodeError, KeyError, TypeError):
                 pass
-    except FileNotFoundError:
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     return info
 
