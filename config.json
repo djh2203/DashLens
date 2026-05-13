@@ -1,0 +1,12 @@
+{
+    "log_file": "~/desktop.log",
+    "novnc_path": "/opt/novnc",
+    "vnc_pass": "/etc/x11vnc.pass",
+    "idle_timeout": 30,
+    "display_num": 1,
+    "resolution": "1280x720x16",
+    "vnc_port": 5901,
+    "websockify_port": 6080,
+    "web_panel_port": 5000,
+    "check_interval": 5
+}
