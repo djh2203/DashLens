@@ -724,6 +724,54 @@ HTML_TEMPLATE = """
 """
 
 
+def get_cpu_temperature() -> float:
+    try:
+        temps = psutil.sensors_temperatures()
+        if temps:
+            for name, entries in temps.items():
+                for entry in entries:
+                    if entry.current > 0:
+                        return entry.current
+        return 0.0
+    except Exception:
+        return 0.0
+
+def get_cpu_info() -> str:
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                if line.startswith('model name'):
+                    return line.split(':')[1].strip()
+        return 'Unknown'
+    except Exception:
+        return 'Unknown'
+
+def get_kernel_version() -> str:
+    try:
+        with open('/proc/version', 'r') as f:
+            line = f.readline()
+            parts = line.split()
+            if len(parts) >= 3:
+                return parts[2]
+        return 'Unknown'
+    except Exception:
+        return 'Unknown'
+
+def get_fastfetch_info() -> Dict:
+    info = {}
+    try:
+        result = subprocess.run(['fastfetch', '--json'], capture_output=True, text=True)
+        if result.returncode == 0:
+            try:
+                data = json.loads(result.stdout)
+                for item in data:
+                    info[item['type']] = item['value']
+            except json.JSONDecodeError:
+                pass
+    except FileNotFoundError:
+        pass
+    return info
+
 def get_system_stats() -> Dict:
     cpu_percent = psutil.cpu_percent(interval=1)
     memory = psutil.virtual_memory()
@@ -758,6 +806,14 @@ def get_system_stats() -> Dict:
     except Exception:
         pass
     
+    cpu_temp = get_cpu_temperature()
+    cpu_name = get_cpu_info()
+    kernel = get_kernel_version()
+    
+    swap = psutil.swap_memory()
+    
+    fastfetch_info = get_fastfetch_info()
+    
     return {
         'cpu': cpu_percent,
         'memory': memory.percent,
@@ -773,7 +829,14 @@ def get_system_stats() -> Dict:
         'memory_total': memory.total,
         'disk_used': disk.used,
         'disk_total': disk.total,
-        'internal_ip': local_ip
+        'internal_ip': local_ip,
+        'cpu_temp': cpu_temp,
+        'cpu_name': cpu_name,
+        'kernel': kernel,
+        'swap_used': swap.used,
+        'swap_total': swap.total,
+        'swap_percent': swap.percent,
+        **fastfetch_info
     }
 
 

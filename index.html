@@ -33,7 +33,7 @@
                                 <defs>
                                     <linearGradient id="cpu-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                                         <stop offset="0%" style="stop-color: #ffd580;"></stop>
-                                        <stop offset="100%" style="stop-color: #33ffaa;"></stop>
+                                        <stop offset="100%" style="stop-color: #ff6b6b;"></stop>
                                     </linearGradient>
                                 </defs>
                                 <circle cx="50" cy="50" r="42" class="gauge-bg"></circle>
@@ -41,10 +41,10 @@
                             </svg>
                             <div class="gauge-overlay">
                                 <span class="gauge-value" id="cpu-value">0</span>
-                                <span class="gauge-label">CPU</span>
+                                <span class="gauge-label">TEMP</span>
                             </div>
                         </div>
-                        <div class="gauge-detail" id="cpu-detail">0%</div>
+                        <div class="gauge-detail" id="cpu-detail">0°C</div>
                     </div>
 
                     <div class="gauge-box">
@@ -65,6 +65,26 @@
                             </div>
                         </div>
                         <div class="gauge-detail" id="ram-detail">0%</div>
+                    </div>
+
+                    <div class="gauge-box">
+                        <div class="gauge-container">
+                            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="gauge-svg">
+                                <defs>
+                                    <linearGradient id="swap-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color: #a855f7;"></stop>
+                                        <stop offset="100%" style="stop-color: #ec4899;"></stop>
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="50" cy="50" r="42" class="gauge-bg"></circle>
+                                <circle cx="50" cy="50" r="42" class="gauge-progress" id="swap-progress"></circle>
+                            </svg>
+                            <div class="gauge-overlay">
+                                <span class="gauge-value" id="swap-value">0</span>
+                                <span class="gauge-label">SWAP</span>
+                            </div>
+                        </div>
+                        <div class="gauge-detail" id="swap-detail">0%</div>
                     </div>
                 </div>
             </div>
@@ -114,19 +134,34 @@
                     </div>
                 </div>
 
-                <div class="column is-full has-text-centered">
-                    <div class="system-info-footer">
-                        <div class="info-item">
-                            <span class="info-label">内网 IP</span>
-                            <span class="info-value" id="internal-ip">--</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">系统运行时间</span>
-                            <span class="info-value" id="uptime">--</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">最后更新</span>
-                            <span class="info-value" id="refresh-time">--</span>
+                <div class="column is-full">
+                    <div class="system-info-section">
+                        <h2 class="section-title">系统信息</h2>
+                        <div class="system-info-grid">
+                            <div class="info-card">
+                                <span class="info-card-label">操作系统</span>
+                                <span class="info-card-value" id="os-info">--</span>
+                            </div>
+                            <div class="info-card">
+                                <span class="info-card-label">内核版本</span>
+                                <span class="info-card-value" id="kernel">--</span>
+                            </div>
+                            <div class="info-card">
+                                <span class="info-card-label">CPU</span>
+                                <span class="info-card-value" id="cpu-name">--</span>
+                            </div>
+                            <div class="info-card">
+                                <span class="info-card-label">内网 IP</span>
+                                <span class="info-card-value" id="internal-ip">--</span>
+                            </div>
+                            <div class="info-card">
+                                <span class="info-card-label">运行时间</span>
+                                <span class="info-card-value" id="uptime">--</span>
+                            </div>
+                            <div class="info-card">
+                                <span class="info-card-label">最后更新</span>
+                                <span class="info-card-value" id="refresh-time">--</span>
+                            </div>
                         </div>
                     </div>
                 </div>

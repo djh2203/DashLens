@@ -479,3 +479,45 @@ body {
         align-items: center;
     }
 }
+
+.system-info-section {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.system-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.info-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.info-card-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.info-card-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    word-break: break-all;
+}
+
+@media (max-width: 768px) {
+    .system-info-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -58,11 +58,19 @@ function updateGauge(elementId, value, gradientId) {
         gauge.style.stroke = 'url(#cpu-gradient)';
     } else if (gradientId === 'ram') {
         gauge.style.stroke = 'url(#ram-gradient)';
+    } else if (gradientId === 'swap-gradient') {
+        gauge.style.stroke = 'url(#swap-gradient)';
     }
 }
 
 function updateSystemInfo(data) {
-    if (data.cpu_usage !== undefined) {
+    if (data.cpu_temp !== undefined && data.cpu_temp > 0) {
+        const cpuValue = Math.round(data.cpu_temp);
+        document.getElementById('cpu-value').textContent = cpuValue;
+        document.getElementById('cpu-detail').textContent = data.cpu_temp.toFixed(1) + '°C';
+        const tempPercent = Math.min(data.cpu_temp / 100 * 100, 100);
+        updateGauge('cpu-progress', tempPercent, 'cpu-gradient');
+    } else if (data.cpu_usage !== undefined) {
         const cpuValue = Math.round(data.cpu_usage);
         document.getElementById('cpu-value').textContent = cpuValue;
         document.getElementById('cpu-detail').textContent = data.cpu_usage + '%';
@@ -91,6 +99,34 @@ function updateSystemInfo(data) {
     if (data.uptime !== undefined) {
         const uptimeEl = document.getElementById('uptime');
         if (uptimeEl) uptimeEl.textContent = formatUptime(data.uptime);
+    }
+
+    if (data.cpu_name !== undefined) {
+        const cpuNameEl = document.getElementById('cpu-name');
+        if (cpuNameEl) cpuNameEl.textContent = data.cpu_name;
+    }
+
+    if (data.kernel !== undefined) {
+        const kernelEl = document.getElementById('kernel');
+        if (kernelEl) kernelEl.textContent = data.kernel;
+    }
+
+    if (data.os !== undefined) {
+        const osEl = document.getElementById('os-info');
+        if (osEl) osEl.textContent = data.os;
+    }
+
+    if (data.swap_used !== undefined && data.swap_total !== undefined) {
+        const swapPercent = data.swap_total > 0
+            ? Math.round((data.swap_used / data.swap_total) * 100)
+            : 0;
+        const swapValueEl = document.getElementById('swap-value');
+        const swapDetailEl = document.getElementById('swap-detail');
+        const swapProgressEl = document.getElementById('swap-progress');
+        if (swapValueEl) swapValueEl.textContent = swapPercent;
+        if (swapDetailEl) swapDetailEl.textContent =
+            formatBytes(data.swap_used) + ' / ' + formatBytes(data.swap_total);
+        if (swapProgressEl) updateGauge('swap-progress', swapPercent, 'swap-gradient');
     }
 }
 
